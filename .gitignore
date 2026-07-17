@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+docs/architecture/architecture.md
+# Build output
+dist/
+build/
+
+# Environment
+.env
+.env.local
+secrets/
+
+# Testing
+coverage/
+.nyc_output/
+
+# Logs
+*.log
+npm-debug.log*
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Prisma
+prisma/.env
+
+# Misc
+*.tsbuildinfo
+.eslintcache
