@@ -35,16 +35,12 @@ export class Document {
     this.props = props;
   }
 
-  static create(
-    props: Omit<DocumentProps, 'uploadedAt' | 'isActive'>,
-  ): Document {
+  static create(props: Omit<DocumentProps, 'uploadedAt' | 'isActive'>): Document {
     if (props.fileSizeBytes <= 0) {
       throw new Error('Document.fileSizeBytes must be positive');
     }
     if (!/^[a-f0-9]{64}$/i.test(props.hashSha256)) {
-      throw new Error(
-        'Document.hashSha256 must be a valid 64-character hex SHA-256 digest',
-      );
+      throw new Error('Document.hashSha256 must be a valid 64-character hex SHA-256 digest');
     }
     return new Document({ ...props, uploadedAt: new Date(), isActive: true });
   }

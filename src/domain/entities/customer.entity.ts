@@ -39,9 +39,7 @@ export class Customer {
     this.props = props;
   }
 
-  static create(
-    props: Omit<CustomerProps, 'createdAt' | 'updatedAt' | 'deletedAt'>,
-  ): Customer {
+  static create(props: Omit<CustomerProps, 'createdAt' | 'updatedAt' | 'deletedAt'>): Customer {
     if (!props.externalId || props.externalId.trim().length === 0) {
       throw new Error('Customer.externalId is required');
     }
@@ -87,9 +85,7 @@ export class Customer {
       throw new Error('CKYC KIN must be exactly 14 digits');
     }
     if (this.props.ckycKin && this.props.ckycKin !== kin) {
-      throw new Error(
-        `Customer already has a different CKYC KIN assigned (${this.props.ckycKin})`,
-      );
+      throw new Error(`Customer already has a different CKYC KIN assigned (${this.props.ckycKin})`);
     }
     this.props.ckycKin = kin;
     this.touch();
@@ -120,9 +116,7 @@ export class Customer {
   }
 
   isDueForReVerification(asOf: Date = new Date()): boolean {
-    return (
-      !!this.props.nextVerificationDue && this.props.nextVerificationDue <= asOf
-    );
+    return !!this.props.nextVerificationDue && this.props.nextVerificationDue <= asOf;
   }
 
   private touch(): void {

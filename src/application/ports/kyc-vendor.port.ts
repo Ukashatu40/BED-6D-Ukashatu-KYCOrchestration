@@ -78,9 +78,7 @@ export interface VendorHealthStatus {
  * See ADR-001 and ADR-005.
  */
 export interface KycVendorPort {
-  initiateVerification(
-    context: VerificationContext,
-  ): Promise<VendorInitiationResult>;
+  initiateVerification(context: VerificationContext): Promise<VendorInitiationResult>;
   checkStatus(referenceId: string): Promise<VendorStatusResult>;
   fetchResult(referenceId: string): Promise<VendorVerificationResult>;
   handleCallback(payload: WebhookPayload): Promise<CallbackProcessingResult>;

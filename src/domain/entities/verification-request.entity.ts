@@ -24,10 +24,7 @@ export class VerificationRequest {
   }
 
   static create(
-    props: Omit<
-      VerificationRequestProps,
-      'createdAt' | 'status' | 'currentStep'
-    >,
+    props: Omit<VerificationRequestProps, 'createdAt' | 'status' | 'currentStep'>,
   ): VerificationRequest {
     if (props.expiresAt <= new Date()) {
       throw new Error('VerificationRequest.expiresAt must be in the future');
@@ -67,9 +64,7 @@ export class VerificationRequest {
     this.props.currentStep = stepName;
   }
 
-  markCompleted(
-    finalStatus: VerificationStatus.VERIFIED | VerificationStatus.REJECTED,
-  ): void {
+  markCompleted(finalStatus: VerificationStatus.VERIFIED | VerificationStatus.REJECTED): void {
     this.props.status = finalStatus;
     this.props.completedAt = new Date();
   }

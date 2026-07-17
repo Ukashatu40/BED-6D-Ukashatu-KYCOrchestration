@@ -4,9 +4,7 @@ import { DocumentType } from '../value-objects/document-type.enum';
 import { VendorType } from '../../application/ports/kyc-vendor.port';
 
 export type ApprovalLevel =
-  | 'AUTOMATED'
-  | 'AUTOMATED_WITH_EXCEPTION_QUEUE'
-  | 'MANDATORY_COMPLIANCE_REVIEW';
+  'AUTOMATED' | 'AUTOMATED_WITH_EXCEPTION_QUEUE' | 'MANDATORY_COMPLIANCE_REVIEW';
 
 export interface DocumentRequirement {
   documentType: DocumentType;
