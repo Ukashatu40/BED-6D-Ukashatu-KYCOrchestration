@@ -16,6 +16,24 @@ export const DIGILOCKER_DOCUMENT_FETCH_RETRY: RetryPolicy = {
   jitterMaxMs: 1000,
 };
 
+/** Per Retry and Backoff Specification table — CKYC search/download. */
+export const CKYC_SEARCH_DOWNLOAD_RETRY: RetryPolicy = {
+  maxRetries: 2,
+  initialDelayMs: 2000,
+  backoffMultiplier: 2,
+  maxDelayMs: 10000,
+  jitterMaxMs: 2000,
+};
+
+/** Per Retry and Backoff Specification table — CKYC individual upload. */
+export const CKYC_UPLOAD_RETRY: RetryPolicy = {
+  maxRetries: 3,
+  initialDelayMs: 5000,
+  backoffMultiplier: 2,
+  maxDelayMs: 30000,
+  jitterMaxMs: 5000,
+};
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }

@@ -5,14 +5,26 @@ import { CircuitBreaker } from '../circuit-breaker';
 import { VendorNormalisedError } from '../../../application/ports/internal-error';
 import { InternalErrorCategory } from '../../../application/ports/kyc-vendor.port';
 import { DocumentType } from '../../../domain/value-objects/document-type.enum';
+import { RetryPolicy } from '../retry.util';
 import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 
 const cbConfig = {
   vendorType: 'DIGILOCKER',
   failureThresholdPercent: 50,
   rollingWindowMs: 60_000,
-  minimumRequestsInWindow: 100, // effectively disabled for adapter-level tests
+  minimumRequestsInWindow: 100,
   openStateTimeoutMs: 30_000,
+};
+
+// Same shape/semantics as DIGILOCKER_DOCUMENT_FETCH_RETRY (3 retries,
+// exponential backoff) but millisecond-scale delays so the suite runs fast
+// and deterministically instead of depending on Jest's timeout budget.
+const FAST_RETRY_POLICY: RetryPolicy = {
+  maxRetries: 3,
+  initialDelayMs: 1,
+  backoffMultiplier: 2,
+  maxDelayMs: 8,
+  jitterMaxMs: 1,
 };
 
 function makeMockClient(overrides: Partial<DigilockerHttpClient> = {}): DigilockerHttpClient {
@@ -31,6 +43,7 @@ function makeAdapter(client: DigilockerHttpClient) {
     client,
     { clientId: 'test-client', sandbox: true },
     new CircuitBreaker(cbConfig),
+    FAST_RETRY_POLICY,
   );
 }
 

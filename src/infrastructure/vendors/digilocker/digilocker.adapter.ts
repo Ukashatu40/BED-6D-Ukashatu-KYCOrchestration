@@ -1,4 +1,3 @@
-// src/infrastructure/vendors/digilocker/digilocker.adapter.ts
 import { randomUUID } from 'crypto';
 import {
   CallbackProcessingResult,
@@ -14,7 +13,7 @@ import {
 } from '../../../application/ports/kyc-vendor.port';
 import { VendorNormalisedError } from '../../../application/ports/internal-error';
 import { CircuitBreaker } from '../circuit-breaker';
-import { DIGILOCKER_DOCUMENT_FETCH_RETRY, retryWithBackoff } from '../retry.util';
+import { DIGILOCKER_DOCUMENT_FETCH_RETRY, RetryPolicy, retryWithBackoff } from '../retry.util';
 import { mapDigilockerError } from './digilocker-error-map';
 import { DigilockerHttpClient } from './digilocker-http-client.interface';
 import { DigilockerOAuthToken } from './digilocker.types';
@@ -45,16 +44,16 @@ export class DigilockerAdapter implements KycVendorPort {
     private readonly httpClient: DigilockerHttpClient,
     private readonly config: DigilockerAdapterConfig,
     private readonly circuitBreaker: CircuitBreaker,
+    // Injectable so tests can supply near-zero delays instead of the real
+    // 1s/2s/4s production backoff — keeps retry *logic* under test without
+    // making the suite slow. Defaults to the spec's real policy at runtime.
+    private readonly retryPolicy: RetryPolicy = DIGILOCKER_DOCUMENT_FETCH_RETRY,
   ) {}
 
   async initiateVerification(context: VerificationContext): Promise<VendorInitiationResult> {
     return this.circuitBreaker.execute(async () => {
       return retryWithBackoff(
         async () => {
-          // In the real flow, initiation returns an authorisation URL and the
-          // customer completes consent client-side; the authCode arrives out
-          // of band. Here we model the reference ID we hand back to the
-          // orchestration engine to poll against.
           const consentId = randomUUID();
           const referenceId = `dgl-${consentId}`;
           this.sessions.set(referenceId, {
@@ -68,7 +67,7 @@ export class DigilockerAdapter implements KycVendorPort {
             estimatedCompletionSeconds: 120,
           };
         },
-        DIGILOCKER_DOCUMENT_FETCH_RETRY,
+        this.retryPolicy,
         (err) => this.isRetryable(err),
       );
     });
@@ -135,18 +134,12 @@ export class DigilockerAdapter implements KycVendorPort {
             throw this.normaliseError(err);
           }
         },
-        DIGILOCKER_DOCUMENT_FETCH_RETRY,
+        this.retryPolicy,
         (err) => this.isRetryable(err),
       );
     });
   }
 
-  /**
-   * Digilocker has no webhook support (Section A2.1 — key engineering
-   * consideration). This method exists to satisfy KycVendorPort but always
-   * returns processed:false; the orchestration engine must poll checkStatus
-   * instead. Guarded so a misrouted webhook never silently no-ops.
-   */
   async handleCallback(_payload: WebhookPayload): Promise<CallbackProcessingResult> {
     return {
       processed: false,
@@ -190,7 +183,6 @@ export class DigilockerAdapter implements KycVendorPort {
     }
   }
 
-  /** Stub per Day 2 task list — real PKCS#7/CCA chain validation is a Day 4+ hardening item. */
   private validatePkcs7SignatureStub(signature: string): boolean {
     return signature.length > 0;
   }
