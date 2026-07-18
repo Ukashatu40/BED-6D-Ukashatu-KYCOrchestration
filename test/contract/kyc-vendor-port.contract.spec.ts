@@ -258,6 +258,10 @@ describe('KycVendorPort contract — all four adapters', () => {
     });
 
     it('handleCallback resolves to a CallbackProcessingResult with boolean processed and wasDuplicate fields', async () => {
+      // Seed a happy initiation first — session-based adapters (Video KYC)
+      // require an in-flight reference for their webhook to resolve against;
+      // stateless adapters (Digilocker, CKYC, AML) simply ignore this.
+      await harness.seedHappyInitiation();
       const payload = harness.buildAcceptableWebhook();
       const result = await harness.adapter.handleCallback(payload);
       expect(typeof result.processed).toBe('boolean');
