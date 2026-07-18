@@ -34,6 +34,15 @@ export const CKYC_UPLOAD_RETRY: RetryPolicy = {
   jitterMaxMs: 5000,
 };
 
+/** Per Retry and Backoff Specification table — Video KYC session create. */
+export const VIDEO_KYC_SESSION_CREATE_RETRY: RetryPolicy = {
+  maxRetries: 2,
+  initialDelayMs: 1000,
+  backoffMultiplier: 2,
+  maxDelayMs: 5000,
+  jitterMaxMs: 1000,
+};
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
