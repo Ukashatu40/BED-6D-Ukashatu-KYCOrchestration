@@ -1,0 +1,57 @@
+vendors:
+  - vendorType: DIGILOCKER
+    enabled: true
+    circuitBreaker:
+      failureThresholdPercent: 50
+      rollingWindowMs: 60000
+      minimumRequestsInWindow: 5
+      openStateTimeoutMs: 30000
+    credentialsEnvVars:
+      clientId: DIGILOCKER_CLIENT_ID
+      clientSecret: DIGILOCKER_CLIENT_SECRET
+    settings:
+      sandbox: true
+
+  - vendorType: CKYC
+    enabled: true
+    circuitBreaker:
+      # CKYC is documented as notoriously slow (P95 ~5s, spikes to 30s) —
+      # opens after just 2 failures per ADR-005's per-vendor tuning rationale.
+      failureThresholdPercent: 40
+      rollingWindowMs: 60000
+      minimumRequestsInWindow: 2
+      openStateTimeoutMs: 45000
+    credentialsEnvVars:
+      clientCertPath: CKYC_CLIENT_CERT_PATH
+      clientKeyPath: CKYC_CLIENT_KEY_PATH
+    settings:
+      certificateExpiryDate: '2027-01-01T00:00:00.000Z'
+
+  - vendorType: VIDEO_KYC
+    enabled: true
+    circuitBreaker:
+      failureThresholdPercent: 50
+      rollingWindowMs: 60000
+      minimumRequestsInWindow: 5
+      openStateTimeoutMs: 30000
+    credentialsEnvVars:
+      apiKey: SIGNIVISION_API_KEY
+      webhookHmacSecret: SIGNIVISION_WEBHOOK_HMAC_SECRET
+    settings:
+      livenessThreshold: 0.85
+      faceMatchThreshold: 90
+      sessionTimeoutSeconds: 3600
+
+  - vendorType: AML_SCREENING
+    enabled: true
+    circuitBreaker:
+      failureThresholdPercent: 50
+      rollingWindowMs: 60000
+      minimumRequestsInWindow: 5
+      openStateTimeoutMs: 30000
+    credentialsEnvVars:
+      apiKey: GLOBALWATCH_API_KEY
+      requestSigningSecret: GLOBALWATCH_API_KEY
+      webhookHmacSecret: GLOBALWATCH_HMAC_SECRET
+    settings:
+      fuzzyMatchThreshold: 80
