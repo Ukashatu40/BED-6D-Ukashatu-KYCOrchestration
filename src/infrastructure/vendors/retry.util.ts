@@ -43,6 +43,24 @@ export const VIDEO_KYC_SESSION_CREATE_RETRY: RetryPolicy = {
   jitterMaxMs: 1000,
 };
 
+/** Per Retry and Backoff Specification table — AML real-time screening. */
+export const AML_REALTIME_SCREENING_RETRY: RetryPolicy = {
+  maxRetries: 2,
+  initialDelayMs: 1000,
+  backoffMultiplier: 2,
+  maxDelayMs: 5000,
+  jitterMaxMs: 1000,
+};
+
+/** Per Retry and Backoff Specification table — AML batch screening. */
+export const AML_BATCH_SCREENING_RETRY: RetryPolicy = {
+  maxRetries: 3,
+  initialDelayMs: 10000,
+  backoffMultiplier: 2,
+  maxDelayMs: 60000,
+  jitterMaxMs: 10000,
+};
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
