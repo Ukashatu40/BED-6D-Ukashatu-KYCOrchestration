@@ -133,13 +133,22 @@ export class DocumentStorageService {
   }
 
   /**
-   * Metadata-only read — no decryption, no plaintext ever touched. Still
-   * audit-logged per the spec's blanket "every operation must audit-log
-   * the access" requirement, but as a distinct, lower-sensitivity event
-   * type than DocumentDecrypted.
+   * Metadata-only read — no decryption, no plaintext ever touched.
+   * Deliberately available for INACTIVE documents too: per the spec's
+   * Access Control Matrix, "View Meta" and "Decrypt" are separate
+   * permissions (several roles have meta-only access with zero decrypt
+   * rights), and deactivation is a lifecycle state change compliance
+   * officers/auditors must be able to see, not a tombstone that hides the
+   * record. Only getDocument (actual plaintext access) enforces the
+   * active-only guard. Still audit-logged per the spec's blanket "every
+   * operation must audit-log the access" requirement, but as a distinct,
+   * lower-sensitivity event type than DocumentDecrypted.
    */
   async getDocumentMetadata(documentId: string, actor: ActorContext) {
-    const document = await this.requireActiveDocument(documentId);
+    const document = await this.documentRepository.findById(documentId);
+    if (!document) {
+      throw new DocumentNotFoundError(documentId);
+    }
     const props = document.toProps();
 
     await this.auditTrail.recordEvent({
