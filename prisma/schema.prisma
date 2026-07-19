@@ -125,8 +125,6 @@ model Customer {
   @@index([externalId], name: "idx_customers_external_id")
   @@index([ckycKin], name: "idx_customers_ckyc_kin")
   @@index([kycStatus, nextVerificationDue], name: "idx_customers_status_next_verification")
-  @@check(riskScore >= 0 && riskScore <= 100, name: "chk_customers_risk_score_range")
-  @@check(ckycKin == null || length(ckycKin) == 14, name: "chk_customers_ckyc_kin_length")
   @@map("customers")
 }
 
@@ -203,7 +201,6 @@ model Document {
   uploadedBy                 String       @map("uploaded_by")
 
   @@index([customerId, documentType, isActive], name: "idx_documents_customer_type_active")
-  @@check(fileSizeBytes > 0, name: "chk_documents_file_size_positive")
   @@map("documents")
 }
 
@@ -233,7 +230,6 @@ model AmlScreeningResult {
 
   @@index([customerId, createdAt(sort: Desc)], name: "idx_aml_screening_customer_latest")
   @@index([disposition, ongoingMonitoringActive], name: "idx_aml_screening_disposition_monitoring")
-  @@check(highestRiskScore >= 0 && highestRiskScore <= 100, name: "chk_aml_screening_risk_score_range")
   @@map("aml_screening_results")
 }
 
@@ -261,7 +257,6 @@ model AmlMatchDetail {
   // plaintext length isn't visible to Postgres. See AmlDispositionService
   // (Day 5) for the enforced minimum.
 
-  @@check(riskScore >= 0 && riskScore <= 100, name: "chk_aml_match_risk_score_range")
   @@map("aml_match_details")
 }
 
