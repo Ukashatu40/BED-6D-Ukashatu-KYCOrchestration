@@ -1,0 +1,328 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────────────────────────────────
+
+enum KycTier {
+  MINIMUM
+  FULL
+  EDD
+}
+
+enum KycStatus {
+  NOT_STARTED
+  INITIATED
+  DOCUMENTS_PENDING
+  DOCUMENTS_RECEIVED
+  VERIFICATION_IN_PROGRESS
+  VENDOR_CALLBACK_AWAITED
+  VERIFIED
+  REJECTED
+  ESCALATED_TO_MANUAL
+  EXPIRED
+  RE_VERIFICATION_REQUIRED
+  SUSPENDED
+}
+
+enum VendorType {
+  DIGILOCKER
+  CKYC
+  VIDEO_KYC
+  AML_SCREENING
+}
+
+enum StepStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  SKIPPED
+  TIMED_OUT
+}
+
+enum DocumentType {
+  AADHAAR
+  PAN
+  DRIVING_LICENCE
+  ADDRESS_PROOF
+  INCOME_PROOF
+  VIDEO_RECORDING
+  PHOTOGRAPH
+  OTHER
+}
+
+enum ScreeningType {
+  SANCTIONS
+  PEP
+  ADVERSE_MEDIA
+  COMBINED
+}
+
+enum ScreeningDisposition {
+  PENDING
+  CLEARED
+  ESCALATED
+  FROZEN
+  UNDER_REVIEW
+}
+
+enum AuditActorType {
+  SYSTEM
+  USER
+  VENDOR
+  SCHEDULER
+}
+
+enum ErasureStatus {
+  RECEIVED
+  EVALUATING
+  PARTIALLY_EXECUTED
+  SCHEDULED
+  COMPLETED
+  REJECTED
+}
+
+enum KeyStatus {
+  ACTIVE
+  ROTATED
+  REVOKED
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// customers
+// ─────────────────────────────────────────────────────────────────────────
+
+model Customer {
+  customerId          String    @id @default(uuid()) @map("customer_id") @db.Uuid
+  externalId          String    @unique @map("external_id")
+  fullNameEncrypted    Bytes     @map("full_name_encrypted")
+  dateOfBirthEncrypted Bytes     @map("date_of_birth_encrypted")
+  kycTier             KycTier   @map("kyc_tier")
+  kycStatus           KycStatus @map("kyc_status")
+  riskScore           Int       @map("risk_score")
+  riskFactors         Json      @map("risk_factors")
+  ckycKin             String?   @map("ckyc_kin") @db.VarChar(14)
+  lastVerifiedAt      DateTime? @map("last_verified_at")
+  nextVerificationDue DateTime? @map("next_verification_due")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  deletedAt           DateTime? @map("deleted_at")
+
+  verificationRequests VerificationRequest[]
+  documents             Document[]
+  amlScreeningResults   AmlScreeningResult[]
+  auditEvents           AuditEvent[]
+  dataErasureRequests   DataErasureRequest[]
+
+  @@index([externalId], name: "idx_customers_external_id")
+  @@index([ckycKin], name: "idx_customers_ckyc_kin")
+  @@index([kycStatus, nextVerificationDue], name: "idx_customers_status_next_verification")
+  @@check(riskScore >= 0 && riskScore <= 100, name: "chk_customers_risk_score_range")
+  @@check(ckycKin == null || length(ckycKin) == 14, name: "chk_customers_ckyc_kin_length")
+  @@map("customers")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// verification_requests
+// ─────────────────────────────────────────────────────────────────────────
+
+model VerificationRequest {
+  requestId             String    @id @default(uuid()) @map("request_id") @db.Uuid
+  customerId             String    @map("customer_id") @db.Uuid
+  customer               Customer  @relation(fields: [customerId], references: [customerId])
+  tier                   KycTier
+  workflowConfigVersion String    @map("workflow_config_version")
+  currentStep            String?   @map("current_step")
+  status                 KycStatus
+  initiatedBy            String    @map("initiated_by")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  completedAt            DateTime? @map("completed_at")
+  expiresAt              DateTime  @map("expires_at")
+  retryOf                String?   @map("retry_of") @db.Uuid
+
+  steps VerificationStep[]
+
+  @@index([customerId, createdAt(sort: Desc)], name: "idx_verification_requests_customer_latest")
+  @@index([status, expiresAt], name: "idx_verification_requests_status_expiry")
+  @@map("verification_requests")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// verification_steps
+// ─────────────────────────────────────────────────────────────────────────
+
+model VerificationStep {
+  stepId                  String              @id @default(uuid()) @map("step_id") @db.Uuid
+  requestId                String              @map("request_id") @db.Uuid
+  request                  VerificationRequest @relation(fields: [requestId], references: [requestId])
+  vendorType               VendorType          @map("vendor_type")
+  vendorAdapterVersion    String              @map("vendor_adapter_version")
+  stepOrder                Int                 @map("step_order")
+  status                   StepStatus
+  inputPayloadEncrypted   Bytes?              @map("input_payload_encrypted")
+  outputPayloadEncrypted  Bytes?              @map("output_payload_encrypted")
+  vendorReferenceId        String?             @map("vendor_reference_id")
+  startedAt                DateTime?           @map("started_at")
+  completedAt              DateTime?           @map("completed_at")
+  retryCount                Int                 @default(0) @map("retry_count")
+  errorCode                 String?             @map("error_code")
+  errorMessageEncrypted    Bytes?              @map("error_message_encrypted")
+
+  @@index([requestId, stepOrder], name: "idx_verification_steps_request_order")
+  @@map("verification_steps")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// documents
+// ─────────────────────────────────────────────────────────────────────────
+
+model Document {
+  documentId            String       @id @default(uuid()) @map("document_id") @db.Uuid
+  customerId             String       @map("customer_id") @db.Uuid
+  customer               Customer     @relation(fields: [customerId], references: [customerId])
+  documentType            DocumentType @map("document_type")
+  storagePath             String       @map("storage_path")
+  encryptionDekEncrypted Bytes        @map("encryption_dek_encrypted")
+  encryptionIv            Bytes        @map("encryption_iv")
+  encryptionAuthTag      Bytes        @map("encryption_auth_tag")
+  encryptionKekVersion    String       @map("encryption_kek_version")
+  hashSha256               String       @map("hash_sha256") @db.VarChar(64)
+  fileSizeBytes            BigInt       @map("file_size_bytes")
+  mimeType                  String       @map("mime_type")
+  uploadedAt                DateTime     @default(now()) @map("uploaded_at")
+  expiresAt                 DateTime?    @map("expires_at")
+  isActive                   Boolean      @default(true) @map("is_active")
+  uploadedBy                 String       @map("uploaded_by")
+
+  @@index([customerId, documentType, isActive], name: "idx_documents_customer_type_active")
+  @@check(fileSizeBytes > 0, name: "chk_documents_file_size_positive")
+  @@map("documents")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// aml_screening_results
+// ─────────────────────────────────────────────────────────────────────────
+
+model AmlScreeningResult {
+  screeningId                     String                @id @default(uuid()) @map("screening_id") @db.Uuid
+  customerId                       String                @map("customer_id") @db.Uuid
+  customer                         Customer              @relation(fields: [customerId], references: [customerId])
+  vendorReferenceId                 String?               @map("vendor_reference_id")
+  screeningType                     ScreeningType         @map("screening_type")
+  matchCount                        Int                   @map("match_count")
+  highestRiskScore                 Int                   @map("highest_risk_score")
+  highestConfidence                 Decimal               @map("highest_confidence") @db.Decimal(5, 2)
+  disposition                       ScreeningDisposition  @default(PENDING)
+  dispositionBy                     String?               @map("disposition_by")
+  dispositionAt                     DateTime?             @map("disposition_at")
+  dispositionJustificationEncrypted Bytes?                @map("disposition_justification_encrypted")
+  ongoingMonitoringActive           Boolean               @default(false) @map("ongoing_monitoring_active")
+  monitoringWebhookId               String?               @map("monitoring_webhook_id")
+  createdAt                         DateTime              @default(now()) @map("created_at")
+  updatedAt                         DateTime              @updatedAt @map("updated_at")
+
+  matchDetails AmlMatchDetail[]
+
+  @@index([customerId, createdAt(sort: Desc)], name: "idx_aml_screening_customer_latest")
+  @@index([disposition, ongoingMonitoringActive], name: "idx_aml_screening_disposition_monitoring")
+  @@check(highestRiskScore >= 0 && highestRiskScore <= 100, name: "chk_aml_screening_risk_score_range")
+  @@map("aml_screening_results")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// aml_match_details
+// ─────────────────────────────────────────────────────────────────────────
+
+model AmlMatchDetail {
+  matchId                          String              @id @default(uuid()) @map("match_id") @db.Uuid
+  screeningId                       String              @map("screening_id") @db.Uuid
+  screening                         AmlScreeningResult  @relation(fields: [screeningId], references: [screeningId])
+  matchedList                       String              @map("matched_list")
+  matchedName                       String              @map("matched_name")
+  matchConfidence                   Decimal             @map("match_confidence") @db.Decimal(5, 2)
+  matchedAttributes                 Json                @map("matched_attributes")
+  riskScore                         Int                 @map("risk_score")
+  disposition                       ScreeningDisposition
+  dispositionBy                     String?             @map("disposition_by")
+  dispositionJustificationEncrypted Bytes?              @map("disposition_justification_encrypted")
+  createdAt                         DateTime            @default(now()) @map("created_at")
+
+  // 50-character minimum justification (Deutsche Bank case study, p.21) is
+  // enforced at the application layer, not here — CHECK constraints can't
+  // easily validate byte length of an encrypted BYTEA column since the
+  // plaintext length isn't visible to Postgres. See AmlDispositionService
+  // (Day 5) for the enforced minimum.
+
+  @@check(riskScore >= 0 && riskScore <= 100, name: "chk_aml_match_risk_score_range")
+  @@map("aml_match_details")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// audit_events — append-only, enforced at DB role level (see migration SQL below)
+// ─────────────────────────────────────────────────────────────────────────
+
+model AuditEvent {
+  eventId            String         @id @default(uuid()) @map("event_id") @db.Uuid
+  customerId          String?        @map("customer_id") @db.Uuid
+  customer            Customer?      @relation(fields: [customerId], references: [customerId])
+  eventType            String         @map("event_type") @db.VarChar(100)
+  eventVersion         Int            @default(1) @map("event_version")
+  actorType            AuditActorType @map("actor_type")
+  actorId              String         @map("actor_id")
+  correlationId        String         @map("correlation_id") @db.Uuid
+  eventPayloadEncrypted Bytes         @map("event_payload_encrypted")
+  previousEventHash    String?        @map("previous_event_hash") @db.VarChar(64)
+  eventHash            String         @map("event_hash") @db.VarChar(64)
+  createdAt            DateTime       @default(now()) @map("created_at") @db.Timestamp(6)
+
+  @@index([customerId, createdAt], name: "idx_audit_events_customer_trail")
+  @@index([eventType, createdAt], name: "idx_audit_events_type_analysis")
+  @@index([correlationId], name: "idx_audit_events_correlation")
+  @@map("audit_events")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// data_erasure_requests
+// ─────────────────────────────────────────────────────────────────────────
+
+model DataErasureRequest {
+  requestId                 String        @id @default(uuid()) @map("request_id") @db.Uuid
+  customerId                 String        @map("customer_id") @db.Uuid
+  customer                   Customer      @relation(fields: [customerId], references: [customerId])
+  requestorId                 String        @map("requestor_id")
+  requestDate                 DateTime      @map("request_date")
+  status                       ErasureStatus
+  legalHolds                   Json          @map("legal_holds")
+  eligibleDataCategories     Json          @map("eligible_data_categories")
+  anonymisedDataCategories   Json?         @map("anonymised_data_categories")
+  scheduledCompletionDate    DateTime?     @map("scheduled_completion_date")
+  responseSentAt              DateTime?     @map("response_sent_at")
+  completedAt                  DateTime?     @map("completed_at")
+
+  @@index([customerId, status], name: "idx_erasure_requests_customer_status")
+  @@index([scheduledCompletionDate, status], name: "idx_erasure_requests_due_scheduled")
+  @@map("data_erasure_requests")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// encryption_key_metadata
+// ─────────────────────────────────────────────────────────────────────────
+
+model EncryptionKeyMetadata {
+  keyId          String    @id @map("key_id")
+  kekVersion     String    @map("kek_version")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  rotatedAt      DateTime? @map("rotated_at")
+  status         KeyStatus
+  documentCount  Int       @default(0) @map("document_count")
+
+  @@map("encryption_key_metadata")
+}
