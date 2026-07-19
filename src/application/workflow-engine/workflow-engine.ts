@@ -125,9 +125,24 @@ export class WorkflowEngine {
     }
 
     if (step.isManualStep) {
-      // Manual steps never call a vendor — they represent a human-in-the-loop
-      // pause (compliance officer review). The workflow halts here until an
-      // external event (Day 5's use case setting complianceApproved) resumes it.
+      // A manual step halts the workflow exactly once. On re-invocation
+      // (Day 5's use case calling executeWorkflow again after a human
+      // approves), the approval flag being set means this step has already
+      // been satisfied — it's now correctly SKIPPED, not re-halted on.
+      // Convention: complianceApproved covers the one manual-step type
+      // both shipped workflows use (compliance officer review). A second
+      // distinct manual-step kind would need its own flag and a small
+      // lookup here rather than this single hardcoded name.
+      const alreadyApproved = context.flags.complianceApproved === true;
+      if (alreadyApproved) {
+        return {
+          stepName: step.stepName,
+          vendorType: null,
+          succeeded: true,
+          skipped: true,
+          isManualStep: true,
+        };
+      }
       return {
         stepName: step.stepName,
         vendorType: null,
