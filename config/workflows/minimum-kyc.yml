@@ -1,0 +1,44 @@
+# config/workflows/minimum-kyc.yml
+tier: MINIMUM
+description: 'Aadhaar OTP eKYC via Digilocker for instant loans < INR 50K aggregate'
+targetCompletionMinutes: 5
+approvalAuthority: AUTOMATED
+
+requiredDocuments:
+  - documentType: AADHAAR
+    mandatory: true
+
+steps:
+  - stepName: aadhaar-otp-fetch
+    vendorType: DIGILOCKER
+    order: 1
+    parallelGroup: null
+    guardExpression: null
+    timeoutSeconds: 120
+    retryPolicy:
+      maxRetries: 3
+      initialDelayMs: 1000
+      backoffMultiplier: 2
+      maxDelayMs: 8000
+
+  - stepName: basic-name-screen
+    vendorType: AML_SCREENING
+    order: 2
+    parallelGroup: null
+    guardExpression: null
+    timeoutSeconds: 5
+    retryPolicy:
+      maxRetries: 2
+      initialDelayMs: 1000
+      backoffMultiplier: 2
+      maxDelayMs: 5000
+
+ckycUpload:
+  timing: DEFERRED
+  deadlineDays: 10
+
+reVerification:
+  frequency: ANNUAL
+
+documentRetentionYears: 5
+ongoingMonitoring: false

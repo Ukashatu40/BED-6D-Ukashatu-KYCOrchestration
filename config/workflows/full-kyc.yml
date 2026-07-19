@@ -1,0 +1,72 @@
+# config/workflows/full-kyc.yml
+tier: FULL
+description: 'PAN + Aadhaar + address proof via CKYC search/Digilocker fallback for all standard accounts'
+targetCompletionMinutes: 30
+approvalAuthority: AUTOMATED_WITH_EXCEPTION_QUEUE
+
+requiredDocuments:
+  - documentType: PAN
+    mandatory: true
+  - documentType: AADHAAR
+    mandatory: true
+  - documentType: ADDRESS_PROOF
+    mandatory: true
+
+steps:
+  - stepName: ckyc-search
+    vendorType: CKYC
+    order: 1
+    parallelGroup: null
+    guardExpression: null
+    timeoutSeconds: 30
+    retryPolicy:
+      maxRetries: 2
+      initialDelayMs: 2000
+      backoffMultiplier: 2
+      maxDelayMs: 10000
+
+  - stepName: digilocker-fetch
+    vendorType: DIGILOCKER
+    order: 2
+    parallelGroup: docs
+    guardExpression: '!ckycRecordFound'
+    timeoutSeconds: 120
+    retryPolicy:
+      maxRetries: 3
+      initialDelayMs: 1000
+      backoffMultiplier: 2
+      maxDelayMs: 8000
+
+  - stepName: full-aml-screen
+    vendorType: AML_SCREENING
+    order: 3
+    parallelGroup: null
+    guardExpression: null
+    timeoutSeconds: 3
+    retryPolicy:
+      maxRetries: 2
+      initialDelayMs: 1000
+      backoffMultiplier: 2
+      maxDelayMs: 5000
+
+  - stepName: ckyc-upload
+    vendorType: CKYC
+    order: 4
+    parallelGroup: null
+    guardExpression: '!ckycRecordFound'
+    timeoutSeconds: 30
+    retryPolicy:
+      maxRetries: 3
+      initialDelayMs: 5000
+      backoffMultiplier: 2
+      maxDelayMs: 30000
+
+ckycUpload:
+  timing: IMMEDIATE_IF_FRESH
+  deadlineDays: 5
+
+reVerification:
+  frequency: BIENNIAL
+
+documentRetentionYears: 5
+ongoingMonitoring: TRANSACTION_PATTERN_ONLY
