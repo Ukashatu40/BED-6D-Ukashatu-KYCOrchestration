@@ -6,10 +6,11 @@ import { Customer } from '../../domain/entities/customer.entity';
 import { KycTier } from '../../domain/value-objects/kyc-tier.enum';
 import { VerificationStatus } from '../../domain/value-objects/verification-status.enum';
 import { RiskScore } from '../../domain/value-objects/risk-score.vo';
-import { NotFoundException } from '@nestjs/common';
+// import { NotFoundException } from '@nestjs/common';
 import { AuditActorType } from '../../domain/entities/audit-event.entity';
 import { JwtPayload } from '../auth/jwt-payload.interface';
 import { describe, it, expect } from '@jest/globals';
+import { CustomerNotFoundError } from '../../application/use-cases/recalculate-risk-score.use-case';
 
 class FakeCustomerRepository implements CustomerRepositoryPort {
   private customers = new Map<string, Customer>();
@@ -80,7 +81,9 @@ describe('RiskController', () => {
     it('throws NotFoundException for an unknown customer', async () => {
       const repo = new FakeCustomerRepository();
       const controller = new RiskController(repo, new InMemoryAuditTrail());
-      await expect(controller.getScore('nonexistent')).rejects.toBeInstanceOf(NotFoundException);
+      await expect(controller.getScore('nonexistent')).rejects.toBeInstanceOf(
+        CustomerNotFoundError,
+      );
     });
   });
 
@@ -161,7 +164,7 @@ describe('RiskController', () => {
           testUser,
           testCorrelationId,
         ),
-      ).rejects.toBeInstanceOf(NotFoundException);
+      ).rejects.toBeInstanceOf(CustomerNotFoundError);
     });
   });
 });

@@ -47,12 +47,15 @@ function RequiredWhenKindIs(kind: string, validationOptions?: ValidationOptions)
       options: validationOptions,
       validator: {
         validate(value: unknown, args) {
+          if (!args) return true; // defensive — validator framework always supplies this at runtime
           const dto = args.object as RecalculateRiskRequestDto;
           if (dto.kind !== kind) return true;
           return value !== undefined && value !== null;
         },
         defaultMessage(args) {
-          return `${args.property} is required when kind is "${kind}"`;
+          return args
+            ? `${args.property} is required when kind is "${kind}"`
+            : 'This field is required';
         },
       },
     });
