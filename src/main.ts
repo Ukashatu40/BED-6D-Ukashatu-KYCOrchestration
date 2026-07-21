@@ -1,9 +1,9 @@
-// src/main.ts
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { DomainExceptionFilter } from './api/domain-exception.filter';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestFastifyApplication>(
@@ -11,16 +11,33 @@ async function bootstrap(): Promise<void> {
     new FastifyAdapter({ logger: true }),
   );
 
-  // Global validation pipe setup -- this will automatically validate incoming requests based on DTOs and class-validator decorators
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
+      exceptionFactory: (validationErrors) => {
+        // Shapes class-validator's default output into the spec's
+        // VALIDATION_ERROR envelope (p.39) rather than Nest's default array.
+        return {
+          getStatus: () => 400,
+          getResponse: () => ({
+            error: {
+              code: 'VALIDATION_ERROR',
+              message: 'Request validation failed',
+              details: validationErrors.map((e) => ({
+                field: e.property,
+                reason: Object.values(e.constraints ?? {}).join(', '),
+              })),
+            },
+          }),
+        };
+      },
     }),
   );
 
-  // Swagger setup
+  app.useGlobalFilters(new DomainExceptionFilter());
+
   const config = new DocumentBuilder()
     .setTitle('KYC/AML Orchestration Service')
     .setDescription('BED-6D — Vendor-agnostic KYC/AML orchestration for QuickLend')

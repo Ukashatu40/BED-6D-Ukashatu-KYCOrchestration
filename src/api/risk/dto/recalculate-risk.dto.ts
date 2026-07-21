@@ -1,15 +1,17 @@
 // src/api/risk/dto/recalculate-risk.dto.ts
 import {
   IsArray,
-  IsEnum,
   IsIn,
   IsInt,
   IsNumber,
   IsString,
   Max,
   Min,
-  ValidateNested,
   MinLength,
+  registerDecorator,
+  ValidateIf,
+  ValidateNested,
+  ValidationOptions,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
@@ -31,17 +33,30 @@ export class RiskFactorInputsDto {
 }
 
 export class RiskDeltaDto {
-  @ApiProperty({
-    minLength: 10,
-    description: 'Human-readable reason for this point delta — required for audit traceability',
-  })
-  @IsString()
-  @MinLength(10)
-  reason!: string;
+  @ApiProperty({ minLength: 10 }) @IsString() @MinLength(10) reason!: string;
+  @ApiProperty() @IsInt() points!: number;
+}
 
-  @ApiProperty({ description: 'Signed integer point adjustment; positive increases risk' })
-  @IsInt()
-  points!: number;
+/** Declarative cross-field validator so "factors required iff kind===FULL_RECALCULATION" lives in the DTO, not in controller logic. */
+function RequiredWhenKindIs(kind: string, validationOptions?: ValidationOptions) {
+  return (object: object, propertyName: string) => {
+    registerDecorator({
+      name: 'requiredWhenKindIs',
+      target: object.constructor,
+      propertyName,
+      options: validationOptions,
+      validator: {
+        validate(value: unknown, args) {
+          const dto = args.object as RecalculateRiskRequestDto;
+          if (dto.kind !== kind) return true;
+          return value !== undefined && value !== null;
+        },
+        defaultMessage(args) {
+          return `${args.property} is required when kind is "${kind}"`;
+        },
+      },
+    });
+  };
 }
 
 export class RecalculateRiskRequestDto {
@@ -50,11 +65,17 @@ export class RecalculateRiskRequestDto {
   kind!: 'FULL_RECALCULATION' | 'DELTA_APPLICATION';
 
   @ApiProperty({ required: false, type: RiskFactorInputsDto })
+  @RequiredWhenKindIs('FULL_RECALCULATION')
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+  @ValidateIf((dto) => dto.kind === 'FULL_RECALCULATION')
   @ValidateNested()
   @Type(() => RiskFactorInputsDto)
   factors?: RiskFactorInputsDto;
 
   @ApiProperty({ required: false, type: [RiskDeltaDto] })
+  @RequiredWhenKindIs('DELTA_APPLICATION')
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+  @ValidateIf((dto) => dto.kind === 'DELTA_APPLICATION')
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => RiskDeltaDto)
