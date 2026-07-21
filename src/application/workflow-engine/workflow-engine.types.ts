@@ -17,6 +17,7 @@ export interface StepExecutionResult {
   succeeded: boolean;
   skipped: boolean;
   isManualStep: boolean;
+  awaitingCallback?: boolean; // NEW — true when an async vendor step (e.g. video KYC) has been initiated but not yet completed via webhook
   vendorResult?: VendorVerificationResult;
   error?: string;
 }
@@ -25,6 +26,7 @@ export interface WorkflowExecutionResult {
   tier: string;
   allStepsSucceeded: boolean;
   awaitingManualStep: boolean;
+  awaitingCallback: boolean; // NEW
   stepResults: StepExecutionResult[];
 }
 

@@ -33,13 +33,11 @@ export class WorkflowEngine {
 
     const stepResults: StepExecutionResult[] = [];
     let awaitingManualStep = false;
+    let awaitingCallback = false;
     let allStepsSucceeded = true;
 
     for (const group of groups) {
-      if (awaitingManualStep) {
-        // A prior manual step halted the workflow — remaining steps are not
-        // attempted this pass. The caller (Day 5's use case) re-invokes
-        // executeWorkflow later once complianceApproved flips true.
+      if (awaitingManualStep || awaitingCallback) {
         for (const step of group) {
           stepResults.push({
             stepName: step.stepName,
@@ -59,6 +57,9 @@ export class WorkflowEngine {
         if (result.isManualStep && !result.skipped) {
           awaitingManualStep = true;
         }
+        if (result.awaitingCallback) {
+          awaitingCallback = true;
+        }
         if (!result.skipped && !result.succeeded) {
           allStepsSucceeded = false;
         }
@@ -73,8 +74,9 @@ export class WorkflowEngine {
 
     return {
       tier: config.tier,
-      allStepsSucceeded: allStepsSucceeded && !awaitingManualStep,
+      allStepsSucceeded: allStepsSucceeded && !awaitingManualStep && !awaitingCallback,
       awaitingManualStep,
+      awaitingCallback,
       stepResults,
     };
   }
@@ -154,15 +156,17 @@ export class WorkflowEngine {
 
     try {
       const vendorResult = await this.stepExecutor.executeVendorStep(step, context);
-      // Successful steps can set flags for subsequent guard expressions —
-      // e.g. a CKYC search step setting ckycRecordFound based on its result.
       this.applyResultToFlags(step, vendorResult, context);
+      const awaitingCallback = Boolean(
+        step.isAsync && vendorResult.normalisedData.awaitingCallback === true,
+      );
       return {
         stepName: step.stepName,
         vendorType: step.vendorType,
         succeeded: vendorResult.success,
         skipped: false,
         isManualStep: false,
+        awaitingCallback,
         vendorResult,
       };
     } catch (err) {
