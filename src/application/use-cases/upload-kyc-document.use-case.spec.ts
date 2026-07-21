@@ -141,6 +141,7 @@ function makeConfigProvider(): WorkflowConfigProvider {
 }
 
 function makeVendorFactory(overrides: { digilocker?: any; aml?: any } = {}): VendorAdapterFactory {
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
   const digilocker = overrides.digilocker ?? {
     initiateVerification: jest
       .fn()
@@ -149,6 +150,7 @@ function makeVendorFactory(overrides: { digilocker?: any; aml?: any } = {}): Ven
       .fn()
       .mockResolvedValue({ vendorReferenceId: 'ref-1', success: true, normalisedData: {} }),
   };
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
   const aml = overrides.aml ?? {
     initiateVerification: jest
       .fn()
