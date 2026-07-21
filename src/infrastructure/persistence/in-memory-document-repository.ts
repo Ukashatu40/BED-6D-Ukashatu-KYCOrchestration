@@ -13,4 +13,10 @@ export class InMemoryDocumentRepository implements DocumentRepositoryPort {
   async findById(documentId: string): Promise<Document | null> {
     return this.documents.get(documentId) ?? null;
   }
+
+  async findActiveByCustomer(customerId: string): Promise<Document[]> {
+    return Array.from(this.documents.values()).filter(
+      (d) => d.toProps().customerId === customerId && d.isActive,
+    );
+  }
 }

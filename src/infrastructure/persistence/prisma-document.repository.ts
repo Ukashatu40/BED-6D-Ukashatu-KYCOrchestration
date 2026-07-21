@@ -15,6 +15,7 @@ export class PrismaDocumentRepository implements DocumentRepositoryPort {
       create: {
         documentId: props.documentId,
         customerId: props.customerId,
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
         documentType: props.documentType as DocumentType,
         storagePath: props.storagePath,
         encryptionDekEncrypted: props.encryption.encryptionDekEncrypted,
@@ -64,5 +65,10 @@ export class PrismaDocumentRepository implements DocumentRepositoryPort {
       expiresAt: row.expiresAt,
       isActive: row.isActive,
     });
+  }
+
+  async findActiveByCustomer(customerId: string): Promise<Document[]> {
+    const rows = await this.prisma.document.findMany({ where: { customerId, isActive: true } });
+    return rows.map((row) => this.toDomain(row));
   }
 }
