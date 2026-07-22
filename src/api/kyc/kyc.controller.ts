@@ -21,6 +21,7 @@ import { CorrelationId } from '../correlation-id.decorator';
 import { JwtPayload } from '../auth/jwt-payload.interface';
 import { Roles } from '../auth/roles.decorator';
 import { DocumentType } from '../../domain/value-objects/document-type.enum';
+import { EscalateKycTierUseCase } from '@application/use-cases/escalate-kyc-tier.use-case';
 
 /**
  * Thin per the same discipline as RiskController: every method is
@@ -38,6 +39,7 @@ export class KycController {
     @Inject('UploadKycDocumentUseCase') private readonly uploadDocument: UploadKycDocumentUseCase,
     @Inject('GetKycStatusUseCase') private readonly getStatus: GetKycStatusUseCase,
     @Inject('GetKycHistoryUseCase') private readonly getHistory: GetKycHistoryUseCase,
+    @Inject('EscalateKycTierUseCase') private readonly escalateTier: EscalateKycTierUseCase,
   ) {}
 
   @Post('initiate')
@@ -102,5 +104,30 @@ export class KycController {
   @ApiParam({ name: 'customerId' })
   async history(@Param('customerId') customerId: string) {
     return this.getHistory.execute(customerId);
+  }
+
+  @Post(':requestId/escalate')
+  @Roles('compliance_officer', 'ops_admin')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Manual escalation to higher KYC tier' })
+  @ApiParam({ name: 'requestId' })
+  async escalate(
+    @Param('requestId') requestId: string,
+    @Body()
+    body: {
+      targetTier: import('../../domain/value-objects/kyc-tier.enum').KycTier;
+      reason: string;
+    },
+    @CurrentUser() user: JwtPayload,
+    @CorrelationId() correlationId: string,
+  ) {
+    return this.escalateTier.execute({
+      requestId,
+      targetTier: body.targetTier,
+      reason: body.reason,
+      actorId: user.sub,
+      actorType: user.actorType,
+      correlationId,
+    });
   }
 }
