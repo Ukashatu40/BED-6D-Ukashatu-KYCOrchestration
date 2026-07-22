@@ -98,6 +98,8 @@ export class ProcessWebhookUseCase {
     );
     const stateMachine = new VerificationStateMachine(request.status, sideEffectHandler);
 
+    await stateMachine.apply(VerificationEvent.CALLBACK_RECEIVED, { webhookSignatureValid: true });
+
     const callbackSucceeded = callbackResult.processed && callbackResult.result?.success === true;
     if (!callbackSucceeded) {
       await stateMachine.apply(VerificationEvent.STEP_FAILED, { stepFailureNonRecoverable: true });
@@ -105,10 +107,9 @@ export class ProcessWebhookUseCase {
       return { wasDuplicate: false, requestStatus: stateMachine.getCurrentState() };
     }
 
-    await stateMachine.apply(VerificationEvent.CALLBACK_RECEIVED, { webhookSignatureValid: true });
-
     const config = this.workflowConfigProvider.getConfig(request.toProps().tier);
     const engine = new WorkflowEngine(new VendorStepExecutor(this.vendorFactory));
+    // ... rest unchanged
     const result = await engine.executeWorkflow(config, {
       customerId: customer.customerId,
       requestId: command.requestId,
