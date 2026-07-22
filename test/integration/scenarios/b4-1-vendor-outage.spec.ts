@@ -6,7 +6,15 @@ import { VendorType, InternalErrorCategory } from '../../../src/application/port
 import { KycTier } from '../../../src/domain/value-objects/kyc-tier.enum';
 import { DocumentType } from '../../../src/domain/value-objects/document-type.enum';
 import { describe, it, expect } from '@jest/globals';
+import { RetryPolicy } from '../../../src/infrastructure/vendors/retry.util';
 
+const FAST_RETRY: RetryPolicy = {
+  maxRetries: 1, // keep this LOW — the scenario needs 5 initiate+fetch cycles to trip the breaker; each retry compounds real wait time even at "fast" ms-scale
+  initialDelayMs: 1,
+  backoffMultiplier: 2,
+  maxDelayMs: 4,
+  jitterMaxMs: 1,
+};
 /**
  * Models Section B4.1: a 4-hour Digilocker outage during peak hours,
  * 2,400 customers mid-onboarding. What's exercised: (a) detection via
@@ -31,14 +39,18 @@ describe('Scenario B4.1 — Vendor Outage (Digilocker)', () => {
       failureThresholdPercent: 50,
       rollingWindowMs: 60_000,
       minimumRequestsInWindow: 5,
-      openStateTimeoutMs: 50, // short for test speed
+      openStateTimeoutMs: 50,
     });
     return {
-      adapter: new DigilockerAdapter(client, { clientId: 'test', sandbox: true }, circuitBreaker),
+      adapter: new DigilockerAdapter(
+        client,
+        { clientId: 'test', sandbox: true },
+        circuitBreaker,
+        FAST_RETRY, // 4th arg — was missing, causing production-speed retries
+      ),
       circuitBreaker,
     };
   }
-
   const context = {
     customerId: 'cust-001',
     requestId: 'req-001',

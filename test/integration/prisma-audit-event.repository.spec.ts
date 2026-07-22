@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { PrismaClient } from '@prisma/client';
+// import { PrismaClient } from '@prisma/client';
 import { PrismaService } from '../../src/infrastructure/persistence/prisma.service';
 import { PrismaAuditEventRepository } from '../../src/infrastructure/audit/prisma-audit-event.repository';
 import { EncryptionService } from '../../src/infrastructure/encryption/encryption.service';
@@ -24,16 +24,19 @@ describe('PrismaAuditEventRepository (integration)', () => {
 
   afterEach(async () => {
     await prisma.$executeRawUnsafe(
+      'ALTER TABLE audit_events DISABLE TRIGGER trg_audit_events_no_update',
+    );
+    await prisma.$executeRawUnsafe(
       'ALTER TABLE audit_events DISABLE TRIGGER trg_audit_events_no_delete',
     );
     await prisma.$executeRawUnsafe('TRUNCATE audit_events');
+    await prisma.customer.deleteMany({});
+    await prisma.$executeRawUnsafe(
+      'ALTER TABLE audit_events ENABLE TRIGGER trg_audit_events_no_update',
+    );
     await prisma.$executeRawUnsafe(
       'ALTER TABLE audit_events ENABLE TRIGGER trg_audit_events_no_delete',
     );
-    // customers must be cleaned after audit_events since nothing FKs from
-    // customers back to audit_events, but audit_events FKs to customers —
-    // truncating customers first would itself fail on the FK.
-    await prisma.customer.deleteMany({});
   });
 
   const actor = {

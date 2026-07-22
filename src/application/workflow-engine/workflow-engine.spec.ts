@@ -107,7 +107,7 @@ describe('WorkflowEngine', () => {
       const executor: WorkflowStepExecutor = {
         executeVendorStep: jest.fn(async () => {
           startTimes.push(Date.now());
-          await new Promise((r) => setTimeout(r, 20));
+          await new Promise((r) => setTimeout(r, 50)); // was 20ms — widened so the serial-vs-parallel gap is less sensitive to scheduler jitter
           return { vendorReferenceId: 'x', success: true, normalisedData: {} };
         }),
       };
@@ -119,8 +119,11 @@ describe('WorkflowEngine', () => {
       const start = Date.now();
       await engine.executeWorkflow(config, makeContext());
       const elapsed = Date.now() - start;
-      expect(elapsed).toBeLessThan(35); // both ran concurrently, not 20+20=40ms sequentially
-      expect(startTimes[1] - startTimes[0]).toBeLessThan(10); // started nearly simultaneously
+      // Serial execution would take ~100ms (50+50); concurrent should be
+      // close to 50ms. A generous <80ms still clearly distinguishes the two
+      // without being flaky under CI/shared-machine scheduler noise.
+      expect(elapsed).toBeLessThan(80);
+      expect(startTimes[1] - startTimes[0]).toBeLessThan(20); // still tight enough to prove near-simultaneous start
     });
 
     it('aggregates results from all steps in a parallel group', async () => {

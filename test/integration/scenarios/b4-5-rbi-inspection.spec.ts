@@ -1,27 +1,16 @@
 // test/integration/scenarios/b4-5-rbi-inspection.spec.ts
+import { describe, it, expect, beforeAll, afterAll, afterEach } from '@jest/globals';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../../src/infrastructure/persistence/prisma.service';
 import { PrismaAuditEventRepository } from '../../../src/infrastructure/audit/prisma-audit-event.repository';
 import { EncryptionService } from '../../../src/infrastructure/encryption/encryption.service';
 import { InMemoryKms } from '../../../src/infrastructure/encryption/in-memory-kms';
 import { AuditActorType } from '../../../src/domain/entities/audit-event.entity';
-import { describe, it, expect, beforeAll, afterAll, afterEach } from '@jest/globals';
 
-/**
- * Models Section B4.5: an RBI inspection team requesting the complete
- * audit trail for a customer, wanting verification steps, document
- * uploads, vendor interactions, state transitions, and hash-chain
- * integrity — producible within a 2-hour SLA (2.4 min/customer for 50
- * customers). This scenario tests the audit trail's own guarantees
- * directly: completeness (every event type the spec lists gets captured),
- * chronological ordering, and — the requirement given the most weight in
- * the spec's own evaluation criteria — hash chain integrity verification,
- * including correctly detecting tampering rather than just trusting the
- * database blindly.
- */
 describe('Scenario B4.5 — RBI On-Site Inspection', () => {
   let prisma: PrismaService;
   let repository: PrismaAuditEventRepository;
+  let seededCustomerIds: string[] = [];
 
   beforeAll(async () => {
     prisma = new PrismaService();
@@ -35,19 +24,27 @@ describe('Scenario B4.5 — RBI On-Site Inspection', () => {
 
   afterEach(async () => {
     await prisma.$executeRawUnsafe(
+      'ALTER TABLE audit_events DISABLE TRIGGER trg_audit_events_no_update',
+    );
+    await prisma.$executeRawUnsafe(
       'ALTER TABLE audit_events DISABLE TRIGGER trg_audit_events_no_delete',
     );
     await prisma.$executeRawUnsafe('TRUNCATE audit_events');
+    await prisma.customer.deleteMany({});
+    await prisma.$executeRawUnsafe(
+      'ALTER TABLE audit_events ENABLE TRIGGER trg_audit_events_no_update',
+    );
     await prisma.$executeRawUnsafe(
       'ALTER TABLE audit_events ENABLE TRIGGER trg_audit_events_no_delete',
     );
-    await prisma.customer.deleteMany({});
   });
 
+  // correlationId is @db.Uuid at the schema level — must be a real UUID,
+  // not an opaque label like the earlier 'corr-b45' was.
   const actor = {
     actorType: AuditActorType.SYSTEM,
     actorId: 'test-system',
-    correlationId: 'corr-b45',
+    correlationId: randomUUID(),
   };
 
   async function seedCustomer(): Promise<string> {
@@ -64,6 +61,7 @@ describe('Scenario B4.5 — RBI On-Site Inspection', () => {
         riskFactors: {},
       },
     });
+    seededCustomerIds.push(customerId);
     return customerId;
   }
 
@@ -187,6 +185,6 @@ describe('Scenario B4.5 — RBI On-Site Inspection', () => {
 
     expect(timeline).toHaveLength(50);
     expect(verification.valid).toBe(true);
-    expect(elapsedMs).toBeLessThan(2.4 * 60 * 1000); // spec's 2.4 min/customer budget — trivially met, but asserted explicitly
+    expect(elapsedMs).toBeLessThan(2.4 * 60 * 1000);
   });
 });
