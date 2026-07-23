@@ -5,6 +5,7 @@ export enum TimerType {
   WORKFLOW_OVERALL_TIMEOUT = 'WORKFLOW_OVERALL_TIMEOUT', // tier-specific completion target
   RE_VERIFICATION_DUE = 'RE_VERIFICATION_DUE', // annual/biennial/quarterly per tier
   EDD_MANUAL_REVIEW_DEADLINE = 'EDD_MANUAL_REVIEW_DEADLINE', // 30-day EDD SLA (Section B4.4)
+  DATA_ERASURE_DUE = 'DATA_ERASURE_DUE', // scheduled future completion once the last active legal hold expires — Section C1.5
 }
 
 export interface ScheduledTimer {

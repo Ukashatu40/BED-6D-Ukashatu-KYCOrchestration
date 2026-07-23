@@ -99,4 +99,14 @@ describe('Customer entity', () => {
     });
     expect(customer.isDueForReVerification()).toBe(true);
   });
+
+  it('anonymises core PII fields, replacing them entirely', () => {
+    const customer = Customer.create(baseProps());
+    const originalName = customer.toProps().fullNameEncrypted;
+    const anonymisedName = Buffer.from('irreversible-hash-1');
+    const anonymisedDob = Buffer.from('irreversible-hash-2');
+    customer.anonymise(anonymisedName, anonymisedDob);
+    expect(customer.toProps().fullNameEncrypted.equals(originalName)).toBe(false);
+    expect(customer.toProps().fullNameEncrypted.equals(anonymisedName)).toBe(true);
+  });
 });

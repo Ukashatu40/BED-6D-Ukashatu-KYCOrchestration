@@ -8,7 +8,8 @@ export const TIMER_DURATIONS_MS: Record<TimerType, number | null> = {
   [TimerType.VENDOR_CALLBACK_TIMEOUT]: 72 * 60 * 60 * 1000, // 72h — VerificationEvent.TIMER_72H
   [TimerType.WORKFLOW_OVERALL_TIMEOUT]: null, // caller supplies duration — varies by tier (5min/30min/48h)
   [TimerType.RE_VERIFICATION_DUE]: null, // caller supplies duration — varies by risk tier (2yr/8yr/10yr)
-  [TimerType.EDD_MANUAL_REVIEW_DEADLINE]: 30 * 24 * 60 * 60 * 1000, // 30-day SLA for EDD manual review (Section B4.4)
+  [TimerType.EDD_MANUAL_REVIEW_DEADLINE]: 30 * 24 * 60 * 60 * 1000,
+  [TimerType.DATA_ERASURE_DUE]: null, // variable — caller supplies duration based on LegalHoldEvaluator.latestExpiry()
 };
 
 export interface FiredTimerHandler {
@@ -59,7 +60,11 @@ export class TimerService {
    * re-verification cadence) rather than fixed constants.
    */
   async scheduleCustomDurationTimer(params: {
-    timerType: TimerType.WORKFLOW_OVERALL_TIMEOUT | TimerType.RE_VERIFICATION_DUE;
+    timerType:
+      | TimerType.WORKFLOW_OVERALL_TIMEOUT
+      | TimerType.RE_VERIFICATION_DUE
+      | TimerType.DATA_ERASURE_DUE;
+
     durationMs: number;
     customerId: string;
     requestId?: string | null;

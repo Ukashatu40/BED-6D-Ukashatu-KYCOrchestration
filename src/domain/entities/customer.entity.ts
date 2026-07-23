@@ -126,4 +126,17 @@ export class Customer {
   toProps(): Readonly<CustomerProps> {
     return { ...this.props };
   }
+
+  /**
+   * Full anonymisation — only called when NO legal hold is active (full
+   * erasure eligible). Replaces core identity PII with irreversible
+   * anonymised values supplied by the caller (AnonymisationService lives
+   * in infrastructure, per ADR-001 — this entity stays pure and never
+   * generates the replacement values itself).
+   */
+  anonymise(anonymisedName: Buffer, anonymisedDob: Buffer): void {
+    this.props.fullNameEncrypted = anonymisedName;
+    this.props.dateOfBirthEncrypted = anonymisedDob;
+    this.touch();
+  }
 }
