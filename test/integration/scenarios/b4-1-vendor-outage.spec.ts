@@ -109,8 +109,12 @@ describe('Scenario B4.1 — Vendor Outage (Digilocker)', () => {
     }
     const callsBeforeOpen = fetchDocument.mock.calls.length;
 
-    const { vendorReferenceId } = await adapter.initiateVerification(context);
-    await expect(adapter.fetchResult(vendorReferenceId)).rejects.toThrow(/Circuit breaker OPEN/);
+    // Once OPEN, the circuit breaker short-circuits at the FIRST wrapped
+    // call it sees — which is initiateVerification, not fetchResult (both
+    // are wrapped in circuitBreaker.execute independently). The important
+    // assertion isn't which specific method throws, it's that the real
+    // vendor (fetchDocument) is never touched again after the breaker opens.
+    await expect(adapter.initiateVerification(context)).rejects.toThrow(/Circuit breaker OPEN/);
     expect(fetchDocument.mock.calls.length).toBe(callsBeforeOpen); // vendor never actually called again
   });
 
