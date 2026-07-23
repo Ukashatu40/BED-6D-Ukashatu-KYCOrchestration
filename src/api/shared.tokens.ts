@@ -1,0 +1,7 @@
+// src/api/shared.tokens.ts
+export const VENDOR_FACTORY = Symbol('VENDOR_FACTORY');
+export const TIMER_SERVICE = Symbol('TIMER_SERVICE');
+export const NOTIFICATION_PORT = Symbol('NOTIFICATION_PORT');
+export const WORKFLOW_CONFIG_PROVIDER = Symbol('WORKFLOW_CONFIG_PROVIDER');
+export const AML_MATCH_REPOSITORY = Symbol('AML_MATCH_REPOSITORY');
+export const DATA_ERASURE_REPOSITORY = Symbol('DATA_ERASURE_REPOSITORY');

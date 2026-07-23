@@ -7,7 +7,12 @@ import { CorrelationIdMiddleware } from './api/correlation-id.middleware';
 import { JwtAuthGuard } from './api/auth/jwt-auth.guard';
 import { RolesGuard } from './api/auth/roles.guard';
 import { PersistenceModule } from './infrastructure/persistence/persistence.module';
+import { SharedInfrastructureModule } from './infrastructure/shared-infrastructure.module';
 import { RiskModule } from './api/risk/risk.module';
+import { KycModule } from './api/kyc/kyc.module';
+import { AmlModule } from './api/aml/aml.module';
+import { WebhooksModule } from './api/webhooks/webhooks.module';
+import { DataErasureModule } from './api/data-erasure/data-erasure.module';
 
 @Module({
   imports: [
@@ -21,14 +26,14 @@ import { RiskModule } from './api/risk/risk.module';
       inject: [ConfigService],
     }),
     PersistenceModule,
+    SharedInfrastructureModule,
     RiskModule,
+    KycModule,
+    AmlModule,
+    WebhooksModule,
+    DataErasureModule,
   ],
   providers: [
-    // Applied globally — every endpoint requires a valid JWT and passes
-    // through role checking unless explicitly marked @Public(). This is
-    // what makes "authenticate (JWT), authorise (role check)" true for
-    // every controller by construction, rather than something each new
-    // controller has to remember to re-declare.
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
   ],
