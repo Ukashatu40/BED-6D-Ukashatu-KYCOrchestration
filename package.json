@@ -16,6 +16,7 @@
     "test:unit": "jest --runInBand src",
     "test:watch": "jest --watch",
     "test:integration": "jest --runInBand test/integration",
+    "test:contract": "jest --runInBand test/contract",
     "test:cov": "jest --coverage",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "prisma:generate": "prisma generate",

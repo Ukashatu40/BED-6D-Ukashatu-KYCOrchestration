@@ -156,7 +156,7 @@ describe('Scenario B4.5 — RBI On-Site Inspection', () => {
       'ALTER TABLE audit_events DISABLE TRIGGER trg_audit_events_no_update',
     );
     await prisma.$executeRawUnsafe(
-      `UPDATE audit_events SET event_hash = 'deadbeef0000000000000000000000000000000000000000000000000000' WHERE event_id = $1`,
+      `UPDATE audit_events SET event_hash = 'deadbeef0000000000000000000000000000000000000000000000000000' WHERE event_id = $1::uuid`,
       event.toProps().eventId,
     );
     await prisma.$executeRawUnsafe(

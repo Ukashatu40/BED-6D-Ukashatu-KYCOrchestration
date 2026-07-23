@@ -51,6 +51,23 @@ describe('Scenario B4.1 — Vendor Outage (Digilocker)', () => {
       circuitBreaker,
     };
   }
+  /**
+   * Drives one initiate+fetch cycle, tolerating failure at EITHER step —
+   * once the circuit breaker opens mid-loop, initiateVerification itself
+   * starts throwing too (correctly: an open circuit should refuse to even
+   * attempt a new verification, not just fail at the fetch stage). Earlier
+   * versions of this test only caught fetchResult's rejection, which left
+   * the (equally expected, once open) initiateVerification rejection
+   * uncaught.
+   */
+  async function attemptCycle(adapter: ReturnType<typeof makeAdapter>['adapter']) {
+    try {
+      const { vendorReferenceId } = await adapter.initiateVerification(context);
+      await adapter.fetchResult(vendorReferenceId);
+    } catch {
+      // expected once the vendor is failing or the circuit is open
+    }
+  }
   const context = {
     customerId: 'cust-001',
     requestId: 'req-001',
@@ -70,8 +87,7 @@ describe('Scenario B4.1 — Vendor Outage (Digilocker)', () => {
     const { adapter, circuitBreaker } = makeAdapter(client);
 
     for (let i = 0; i < 5; i++) {
-      const { vendorReferenceId } = await adapter.initiateVerification(context);
-      await adapter.fetchResult(vendorReferenceId).catch(() => {});
+      await attemptCycle(adapter);
     }
 
     expect(circuitBreaker.getState()).toBe('OPEN');
@@ -89,8 +105,7 @@ describe('Scenario B4.1 — Vendor Outage (Digilocker)', () => {
     const { adapter } = makeAdapter(client);
 
     for (let i = 0; i < 5; i++) {
-      const { vendorReferenceId } = await adapter.initiateVerification(context);
-      await adapter.fetchResult(vendorReferenceId).catch(() => {});
+      await attemptCycle(adapter);
     }
     const callsBeforeOpen = fetchDocument.mock.calls.length;
 
@@ -109,8 +124,7 @@ describe('Scenario B4.1 — Vendor Outage (Digilocker)', () => {
     };
     const { adapter } = makeAdapter(client);
     for (let i = 0; i < 5; i++) {
-      const { vendorReferenceId } = await adapter.initiateVerification(context);
-      await adapter.fetchResult(vendorReferenceId).catch(() => {});
+      await attemptCycle(adapter);
     }
     const health = await adapter.getHealthStatus();
     expect(health.isHealthy).toBe(false);
@@ -152,8 +166,7 @@ describe('Scenario B4.1 — Vendor Outage (Digilocker)', () => {
     const { adapter, circuitBreaker } = makeAdapter(client);
 
     for (let i = 0; i < 5; i++) {
-      const { vendorReferenceId } = await adapter.initiateVerification(context);
-      await adapter.fetchResult(vendorReferenceId).catch(() => {});
+      await attemptCycle(adapter);
     }
     expect(circuitBreaker.getState()).toBe('OPEN');
 
