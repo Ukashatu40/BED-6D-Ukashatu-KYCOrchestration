@@ -79,10 +79,21 @@ export class LocalFileKms implements KmsPort {
 
   private loadOrCreateKeyStore(): string {
     if (existsSync(this.keyStorePath)) {
-      const raw = JSON.parse(readFileSync(this.keyStorePath, 'utf-8')) as {
-        currentVersion: string;
-        keks: Array<{ version: string; keyBase64: string }>;
-      };
+      let raw: { currentVersion?: string; keks?: Array<{ version: string; keyBase64: string }> };
+      try {
+        raw = JSON.parse(readFileSync(this.keyStorePath, 'utf-8'));
+      } catch (err) {
+        throw new Error(
+          `Keystore file at ${this.keyStorePath} exists but is not valid JSON. ` +
+            `Delete it to force regeneration (dev only — never do this against a real KEK in production). Original error: ${err}`,
+        );
+      }
+      if (!raw.currentVersion || !Array.isArray(raw.keks) || raw.keks.length === 0) {
+        throw new Error(
+          `Keystore file at ${this.keyStorePath} is missing "currentVersion" or "keks" — malformed or from an incompatible version. ` +
+            `Delete it to force regeneration (dev only).`,
+        );
+      }
       for (const entry of raw.keks) {
         this.keksByVersion.set(entry.version, Buffer.from(entry.keyBase64, 'base64'));
       }

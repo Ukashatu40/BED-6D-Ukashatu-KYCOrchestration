@@ -21,7 +21,7 @@ import { CorrelationId } from '../correlation-id.decorator';
 import { JwtPayload } from '../auth/jwt-payload.interface';
 import { Roles } from '../auth/roles.decorator';
 import { DocumentType } from '../../domain/value-objects/document-type.enum';
-import { EscalateKycTierUseCase } from '@application/use-cases/escalate-kyc-tier.use-case';
+import { EscalateKycTierUseCase } from '../../application/use-cases/escalate-kyc-tier.use-case';
 
 /**
  * Thin per the same discipline as RiskController: every method is
